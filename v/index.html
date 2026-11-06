@@ -39,6 +39,9 @@
   td.m .sp { color: #d9a27f; font-weight: 700; }
   td.g { color: #7bd88f; font-weight: 700; }
   .names { padding: 10px 12px; color: var(--text); }
+  .names.first { border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  .names.first .fl { color: #7bd88f; font-weight: 700; }
+  td.eq { color: var(--muted); font-size: 12px; font-weight: 700; text-align: left; padding-left: 0; }
   .msg { padding: 28px 18px; color: var(--muted); text-align: center; }
   footer { color: #666; font-size: 12px; text-align: center; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); }
 </style>
@@ -84,6 +87,25 @@
   let d;
   try { d = JSON.parse(json); } catch (e) { return fail('This link looks damaged. Scan the QR code again.'); }
 
+  // Compact sheets (v2): rows are [name, 0=TREAD/1=PW, all-time PR secs, prev PR secs or 0].
+  // Work out the target speeds here: average mph over the distance (Power Walker = half), rounded up to the next 0.1.
+  if (d.v === 2) {
+    const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const beat = (secs, pw) => {
+      if (!secs || !d.mi) return '';
+      const miles = pw ? Math.round((d.mi / 2) * 100) / 100 : d.mi;
+      return (Math.floor(((miles * 3600) / secs) * 10 + 1e-9) / 10 + 0.1).toFixed(1);
+    };
+    const cell = (secs, pw) => (secs ? mmss(secs) + (beat(secs, pw) ? ' → ' + beat(secs, pw) : '') : '-');
+    (d.g || []).forEach((g) => {
+      if (!g.p) return;
+      g.c = ['Member', '', 'All-time → mph', 'Prev → mph'];
+      g.rows = g.p.map(([name, pw, best, prev]) => [name + '.', pw ? 'PW' : 'TREAD', cell(best, pw), cell(prev, pw)]);
+      if (g.f) g.f = g.f.map((n) => n + '.');
+      if (!g.rows.length && !(g.f && g.f.length)) g.empty = 'Nobody booked yet';
+    });
+  }
+
   document.title = 'PR Radar · ' + (d.t || '');
   $('t').textContent = d.t || 'PR Radar';
   $('s').textContent = d.s || '';
@@ -112,6 +134,7 @@
       const cols = g.c || [];
       const muted = cols.map((c) => /^(prev|old)/i.test(c));
       const good = cols.map((c) => /^diff/i.test(c));
+      const eqCol = cols.map((c) => c === '');
       const table = el('table');
       const trh = el('tr');
       cols.forEach((c) => trh.appendChild(el('th', null, c)));
@@ -119,7 +142,7 @@
       g.rows.forEach((r) => {
         const tr = el('tr');
         r.forEach((v, i) => {
-          const td = el('td', muted[i] ? 'm' : good[i] ? 'g' : '');
+          const td = el('td', muted[i] ? 'm' : good[i] ? 'g' : eqCol[i] ? 'eq' : '');
           fillCell(td, v);
           tr.appendChild(td);
         });
@@ -130,8 +153,15 @@
     } else if (g.empty) {
       sec.appendChild(el('div', 'names', g.empty));
     }
+    // First-timers in this class (no PR on file yet)
+    if (g.f && g.f.length) {
+      const f = el('div', 'names first');
+      f.appendChild(el('span', 'fl', 'First attempt: '));
+      f.appendChild(document.createTextNode(g.f.join(', ')));
+      sec.appendChild(f);
+    }
     $('m').appendChild(sec);
-    sections.push({ sec, rows, names: (g.names || []).join(' ').toLowerCase() });
+    sections.push({ sec, rows, names: [...(g.names || []), ...(g.f || [])].join(' ').toLowerCase() });
   });
 
   // Quick find, handy with 20+ people in a class
