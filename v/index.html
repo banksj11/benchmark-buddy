@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1d1d1d">
+<title>PR Radar</title>
+<style>
+  :root { --orange: #f26c22; --bg: #121212; --card: #1d1d1d; --line: #2c2c2c; --text: #f2f2f2; --muted: #9a9a9a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { background: var(--card); border-top: 4px solid var(--orange); padding: 14px 16px 12px;
+    padding-top: calc(14px + env(safe-area-inset-top)); }
+  .brand { color: var(--orange); font-weight: 900; font-size: 12px; letter-spacing: 1.5px; }
+  h1 { margin: 4px 0 2px; font-size: 20px; line-height: 1.2; }
+  #s { color: var(--muted); font-size: 14px; }
+  .search { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .search input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); font-size: 16px; }
+  main { padding: 6px 12px 24px; }
+  section { margin-top: 14px; background: var(--card); border-radius: 10px; overflow: hidden; }
+  .gh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .gh .h { color: var(--orange); font-weight: 800; }
+  .gh .r { color: var(--text); font-weight: 700; font-size: 14px; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+    text-align: right; padding: 8px 12px 4px; }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 9px 12px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-size: 15px; }
+  td:first-child { font-weight: 600; white-space: normal; }
+  td .t { font-weight: 700; }
+  td .a { color: #666; }
+  td .sp { color: var(--orange); font-weight: 800; }
+  td.m, td.m .t { color: var(--muted); font-weight: 500; }
+  td.m .sp { color: #d9a27f; font-weight: 700; }
+  td.g { color: #7bd88f; font-weight: 700; }
+  .names { padding: 10px 12px; color: var(--text); }
+  .msg { padding: 28px 18px; color: var(--muted); text-align: center; }
+  footer { color: #666; font-size: 12px; text-align: center; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">PR RADAR</div>
+  <h1 id="t">Loading…</h1>
+  <div id="s"></div>
+</header>
+<div class="search" id="searchbar" hidden><input id="q" type="search" placeholder="Find a member" autocomplete="off"></div>
+<main id="m"></main>
+<footer>The class data lives only in the link you scanned. Nothing on this page is sent anywhere or saved.</footer>
+<script>
+(async () => {
+  // The data rides in the part of the link after "#", which browsers never send to the server.
+  //   #z=<deflate-raw, base64url JSON>   or   #j=<base64url JSON>
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const fail = (msg) => { $('t').textContent = 'PR Radar'; $('m').appendChild(el('div', 'msg', msg)); };
+
+  const fromB64 = (s) => {
+    s = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    const bin = atob(s), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  };
+
+  const params = new URLSearchParams(location.hash.slice(1));
+  let json = null;
+  try {
+    if (params.get('z')) {
+      if (typeof DecompressionStream === 'undefined') return fail('This phone\'s browser is too old to open the sheet. Update iOS/Android or try Chrome.');
+      const stream = new Blob([fromB64(params.get('z'))]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      json = await new Response(stream).text();
+    } else if (params.get('j')) {
+      json = new TextDecoder().decode(fromB64(params.get('j')));
+    }
+  } catch (e) { json = null; }
+  if (!json) return fail('No class data in this link. Scan the QR code from PR Radar in Challenge Tracker.');
+
+  let d;
+  try { d = JSON.parse(json); } catch (e) { return fail('This link looks damaged. Scan the QR code again.'); }
+
+  document.title = 'PR Radar · ' + (d.t || '');
+  $('t').textContent = d.t || 'PR Radar';
+  $('s').textContent = d.s || '';
+
+  // A cell like "1:49 → 8.3" shows the time, then the speed in orange
+  const fillCell = (td, v) => {
+    const parts = String(v == null ? '' : v).split(' → ');
+    if (parts.length === 2) {
+      td.appendChild(el('span', 't', parts[0]));
+      td.appendChild(el('span', 'a', ' → '));
+      td.appendChild(el('span', 'sp', parts[1]));
+    } else td.textContent = parts[0];
+  };
+
+  const sections = [];
+  (d.g || []).forEach((g) => {
+    const sec = el('section');
+    const gh = el('div', 'gh');
+    gh.appendChild(el('span', 'h', g.h || ''));
+    if (g.r) gh.appendChild(el('span', 'r', g.r));
+    sec.appendChild(gh);
+    const rows = [];
+    if (g.names) {
+      sec.appendChild(el('div', 'names', g.names.join(', ')));
+    } else if (g.rows && g.rows.length) {
+      const cols = g.c || [];
+      const muted = cols.map((c) => /^(prev|old)/i.test(c));
+      const good = cols.map((c) => /^diff/i.test(c));
+      const table = el('table');
+      const trh = el('tr');
+      cols.forEach((c) => trh.appendChild(el('th', null, c)));
+      table.appendChild(trh);
+      g.rows.forEach((r) => {
+        const tr = el('tr');
+        r.forEach((v, i) => {
+          const td = el('td', muted[i] ? 'm' : good[i] ? 'g' : '');
+          fillCell(td, v);
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+        rows.push({ tr, name: String(r[0] || '').toLowerCase() });
+      });
+      sec.appendChild(table);
+    } else if (g.empty) {
+      sec.appendChild(el('div', 'names', g.empty));
+    }
+    $('m').appendChild(sec);
+    sections.push({ sec, rows, names: (g.names || []).join(' ').toLowerCase() });
+  });
+
+  // Quick find, handy with 20+ people in a class
+  if (sections.some((s) => s.rows.length > 6)) {
+    $('searchbar').hidden = false;
+    $('q').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      sections.forEach((s) => {
+        let any = !q || s.names.includes(q);
+        s.rows.forEach((r) => { const hit = !q || r.name.includes(q); r.tr.hidden = !hit; any = any || hit; });
+        s.sec.hidden = !any;
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
