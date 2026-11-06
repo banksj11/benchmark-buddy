@@ -6,7 +6,8 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#1d1d1d">
-<title>PR Radar</title>
+<link rel="icon" type="image/png" href="../icon.png"><link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<title>Benchmark Buddy</title>
 <style>
   :root { --orange: #f26c22; --bg: #121212; --card: #1d1d1d; --line: #2c2c2c; --text: #f2f2f2; --muted: #9a9a9a; }
   * { box-sizing: border-box; }
@@ -48,7 +49,7 @@
 </head>
 <body>
 <header>
-  <div class="brand">PR RADAR</div>
+  <div class="brand">BENCHMARK BUDDY</div>
   <h1 id="t">Loading…</h1>
   <div id="s"></div>
 </header>
@@ -61,7 +62,7 @@
   //   #z=<deflate-raw, base64url JSON>   or   #j=<base64url JSON>
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-  const fail = (msg) => { $('t').textContent = 'PR Radar'; $('m').appendChild(el('div', 'msg', msg)); };
+  const fail = (msg) => { $('t').textContent = 'Benchmark Buddy'; $('m').appendChild(el('div', 'msg', msg)); };
 
   const fromB64 = (s) => {
     s = s.replace(/-/g, '+').replace(/_/g, '/');
@@ -82,7 +83,7 @@
       json = new TextDecoder().decode(fromB64(params.get('j')));
     }
   } catch (e) { json = null; }
-  if (!json) return fail('No class data in this link. Scan the QR code from PR Radar in Challenge Tracker.');
+  if (!json) return fail('No class data in this link. Scan the QR code from Benchmark Buddy in Challenge Tracker.');
 
   let d;
   try { d = JSON.parse(json); } catch (e) { return fail('This link looks damaged. Scan the QR code again.'); }
@@ -106,8 +107,8 @@
     });
   }
 
-  document.title = 'PR Radar · ' + (d.t || '');
-  $('t').textContent = d.t || 'PR Radar';
+  document.title = 'Benchmark Buddy · ' + (d.t || '');
+  $('t').textContent = d.t || 'Benchmark Buddy';
   $('s').textContent = d.s || '';
 
   // A cell like "1:49 → 8.3" shows the time, then the speed in orange
