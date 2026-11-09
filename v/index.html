@@ -88,20 +88,35 @@
   let d;
   try { d = JSON.parse(json); } catch (e) { return fail('This link looks damaged. Scan the QR code again.'); }
 
-  // Compact sheets (v2): rows are [name, 0=TREAD/1=PW, all-time PR secs, prev PR secs or 0].
-  // Work out the target speeds here: average mph over the distance (Power Walker = half), rounded up to the next 0.1.
+  // Compact sheets (v2): rows are [name, machine (0 TREAD, 1 PW, 2 ROW), all-time PR, prev PR or 0].
+  // The targets are worked out here with the same whole-number math as the extension:
+  //   no k  : timed tread/PW for d.mi miles. Values are seconds. Target = mph, next 0.1 up (PW = half the distance).
+  //   k 'd' : tread/PW for d.min minutes (12 MIN). Values are thousandths of a mile. Target = mph to go farther, next 0.1 up.
+  //   k 'r' : rower for d.m meters. Values are hundredths of a sec. Target = slowest 0.1 sec 500m split that still beats it.
   if (d.v === 2) {
     const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    const beat = (secs, pw) => {
-      if (!secs || !d.mi) return '';
-      const miles = pw ? Math.round((d.mi / 2) * 100) / 100 : d.mi;
-      return (Math.floor(((miles * 3600) / secs) * 10 + 1e-9) / 10 + 0.1).toFixed(1);
+    const split = (tenths) => { const m = Math.floor(tenths / 600); return `${m}:${((tenths - m * 600) / 10).toFixed(1).padStart(4, '0')}`; };
+    const rowTime = (c) => { const m = Math.floor(c / 6000); return `${m}:${((c - m * 6000) / 100).toFixed(2).padStart(5, '0')}`; };
+    const kind = d.k === 'd' ? 'dist' : d.k === 'r' ? 'row' : 'time';
+    const show = (v) => {
+      if (kind === 'dist') return (v % 10 ? (v / 1000).toFixed(3) : (v / 1000).toFixed(2)) + ' mi';
+      if (kind === 'row') return rowTime(v);
+      return mmss(v);
     };
-    const cell = (secs, pw) => (secs ? mmss(secs) + (beat(secs, pw) ? ' → ' + beat(secs, pw) : '') : '-');
+    const beat = (v, mach) => {
+      if (!v) return '';
+      if (kind === 'dist') return d.min ? ((Math.floor((3 * v) / (5 * d.min)) + 1) / 10).toFixed(1) : '';
+      if (kind === 'row') return d.m ? split(Math.floor((50 * v + d.m - 1) / d.m) - 1) : '';
+      if (!d.mi) return '';
+      const miles = mach === 1 ? Math.round((d.mi / 2) * 100) / 100 : d.mi;
+      return (Math.floor(((miles * 3600) / v) * 10 + 1e-9) / 10 + 0.1).toFixed(1);
+    };
+    const cell = (v, mach) => (v ? show(v) + (beat(v, mach) ? ' → ' + beat(v, mach) : '') : '-');
+    const unit = kind === 'row' ? 'split' : 'mph';
     (d.g || []).forEach((g) => {
       if (!g.p) return;
-      g.c = ['Member', '', 'All-time → mph', 'Prev → mph'];
-      g.rows = g.p.map(([name, pw, best, prev]) => [name + '.', pw ? 'PW' : 'TREAD', cell(best, pw), cell(prev, pw)]);
+      g.c = ['Member', '', `All-time → ${unit}`, `Prev → ${unit}`];
+      g.rows = g.p.map(([name, mach, best, prev]) => [name + '.', ['TREAD', 'PW', 'ROW'][mach] || '', cell(best, mach), cell(prev, mach)]);
       if (g.f) g.f = g.f.map((n) => n + '.');
       if (!g.rows.length && !(g.f && g.f.length)) g.empty = 'Nobody booked yet';
     });
