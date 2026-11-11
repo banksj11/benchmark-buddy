@@ -88,7 +88,7 @@
   let d;
   try { d = JSON.parse(json); } catch (e) { return fail('This link looks damaged. Scan the QR code again.'); }
 
-  // Compact sheets (v2): rows are [name, machine (0 TREAD, 1 PW, 2 ROW), all-time PR, prev PR or 0].
+  // Compact sheets (v2): rows are [name, machine (0 TREAD, 1 PW, 2 ROW, 3 BIKE, 4 STRIDER), all-time PR, prev PR or 0].
   // The targets are worked out here with the same whole-number math as the extension:
   //   no k  : timed tread/PW for d.mi miles. Values are seconds. Target = mph, next 0.1 up (PW = half the distance).
   //   k 'd' : tread/PW for d.min minutes (12 MIN). Values are thousandths of a mile. Target = mph to go farther, next 0.1 up.
@@ -103,7 +103,7 @@
       return mmss(v);
     };
     const beat = (v, mach) => {
-      if (!v) return '';
+      if (!v || mach >= 3) return ''; // bike and strider: the PR only, no target
       if (kind === 'dist') return d.min ? ((Math.floor((3 * v) / (5 * d.min)) + 1) / 10).toFixed(1) : '';
       if (kind === 'row') return d.m ? mmss(Math.floor((5 * v + d.m - 1) / d.m) - 1) : '';
       if (!d.mi) return '';
@@ -115,7 +115,7 @@
     (d.g || []).forEach((g) => {
       if (!g.p) return;
       g.c = ['Member', '', `All-time → ${unit}`, `Prev → ${unit}`];
-      g.rows = g.p.map(([name, mach, best, prev]) => [name + '.', ['TREAD', 'PW', 'ROW'][mach] || '', cell(best, mach), cell(prev, mach)]);
+      g.rows = g.p.map(([name, mach, best, prev]) => [name + '.', ['TREAD', 'PW', 'ROW', 'BIKE', 'STRIDER'][mach] || '', cell(best, mach), cell(prev, mach)]);
       if (g.f) g.f = g.f.map((n) => n + '.');
       if (!g.rows.length && !(g.f && g.f.length)) g.empty = 'Nobody booked yet';
     });
