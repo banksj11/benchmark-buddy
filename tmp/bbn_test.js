@@ -198,7 +198,7 @@ if(!window.__bbnTest){window.__bbnTest=1;
   // ---------- class schedule (headcount + coach per class) ----------
   // Saved per studio + date so PR Breakers can show "12 of 28 PR'd". Only class times, names,
   // headcounts and coach names are kept (no logins, no member data), and only the last 14 dates.
-  const SCHED_KEY = 'otfPrRadar.schedules';
+  const SCHED_KEY = 'bbnPrRadar.schedules';
   function readSchedules() { try { return JSON.parse(localStorage.getItem(SCHED_KEY)) || {}; } catch (e) { return {}; } }
   function saveSchedule(url, classes) {
     const q = new URL(url, location.href).searchParams;
@@ -344,9 +344,9 @@ if(!window.__bbnTest){window.__bbnTest=1;
 
   function paintBreakersTable() {
     const ths = [...document.querySelectorAll('.react-bs-container-header th')];
-    let uomIdx = ths.findIndex((th) => th.dataset.otfCol === '1');
+    let uomIdx = ths.findIndex((th) => th.dataset.bbnCol === '1');
     if (uomIdx < 0) uomIdx = ths.findIndex((th) => /^UOM$/i.test(th.textContent.trim()));
-    if (uomIdx >= 0) ths[uomIdx].dataset.otfCol = '1';
+    if (uomIdx >= 0) ths[uomIdx].dataset.bbnCol = '1';
     const nameIdx = headerIndex(['NAME']);
     const newIdx = headerIndex(["NEW PR'S", 'NEW PRS', 'NEW PR']);
     if (uomIdx < 0 || nameIdx < 0) return;
