@@ -1136,7 +1136,7 @@ if(!window.__bbnTest){window.__bbnTest=1;
   // results with each member's gender and age group, so the same board can be built for Power Walkers.
   // =====================================================================
   const onLeadPage = () => /leader-board\/today-challenge-leader/i.test(location.hash);
-  const AGE_GROUPS = [[1, '29 AND UNDER'], [2, '30 - 39'], [3, '40 - 49'], [4, '50 - 59'], [5, '60 - 69'], [6, '70 AND OVER']];
+  const AGE_GROUPS = [[1, '29 AND UNDER'], [2, '30 - 39'], [3, '40 - 49'], [4, '50 - 59'], [5, '60 - 69'], [6, '70+']];
   const LEAD_GENDERS = [[1, 'MEN'], [2, 'WOMEN']];
   const LEAD_TOP = 3;
   function onLeaders(url) {
@@ -1169,9 +1169,10 @@ if(!window.__bbnTest){window.__bbnTest=1;
   function leadResult(r, c) {
     if (/distance/i.test((c && c.MetricEntry && c.MetricEntry.EntryType) || '')) {
       const km = parseFloat(r.Result);
-      return isFinite(km) ? (km / KM_PER_MI).toFixed(3) + ' mi' : String(r.Result || '');
+      // same look as CT's own board: miles, three decimals, padded ("01.060")
+      return isFinite(km) ? (km / KM_PER_MI).toFixed(3).padStart(6, '0') : String(r.Result || '');
     }
-    return fmtPR(r.Result).replace(/\.00$/, '');
+    return String(r.Result || '');
   }
   function paintLeaders() {
     const L = S.lead;
@@ -1216,7 +1217,7 @@ if(!window.__bbnTest){window.__bbnTest=1;
       ages: AGE_GROUPS.map(([aid, aname]) => ({
         aname,
         rows: pw.rows.filter((r) => r.GenderId === gid && r.AgeGroupId === aid).sort((a, b) => a.Rank - b.Rank).slice(0, LEAD_TOP)
-          .map((r) => [r.MemberName || `${r.FirstName || ''} ${r.LastName || ''}`.trim(), fmtTime(r.ClassTime), leadResult(r, c)]),
+          .map((r) => [shortName((r.FirstName || '').trim(), (r.LastName || '').trim()), fmtTime(r.ClassTime), leadResult(r, c)]),
       })),
     }));
     const sig = JSON.stringify([L.key, pw.state, groups]);
@@ -1234,11 +1235,14 @@ if(!window.__bbnTest){window.__bbnTest=1;
       g.ages.forEach((a) => {
         const box = el('div', 'bbn-lead-age');
         box.appendChild(el('div', 'bbn-lead-agename', a.aname));
+        let pl = 0;
         for (let i = 0; i < LEAD_TOP; i++) {
           const r = a.rows[i];
-          const row = el('div', 'bbn-lead-row bbn-lead-p' + (i + 1) + (r ? '' : ' bbn-lead-empty'));
-          const place = el('span', 'bbn-lead-place', String(i + 1));
-          place.appendChild(el('sup', '', ['ST', 'ND', 'RD'][i]));
+          // ties share a place, the same way CT's own board does it
+          if (!r) pl = i + 1; else if (i === 0 || r[2] !== a.rows[i - 1][2]) pl += 1;
+          const row = el('div', 'bbn-lead-row bbn-lead-p' + pl + (r ? '' : ' bbn-lead-empty'));
+          const place = el('span', 'bbn-lead-place', String(pl));
+          place.appendChild(el('sup', '', ['ST', 'ND', 'RD'][pl - 1]));
           row.appendChild(place);
           const who = el('span', 'bbn-lead-who');
           who.appendChild(el('span', 'bbn-lead-name', r ? r[0] : '--- ---'));
